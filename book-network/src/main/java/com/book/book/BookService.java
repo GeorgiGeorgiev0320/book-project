@@ -1,6 +1,8 @@
 package com.book.book;
 
 import com.book.common.PageResponse;
+import com.book.history.BookTransactionHistory;
+import com.book.history.BookTransactionHistoryRepository;
 import com.book.user.User;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +20,7 @@ import java.util.List;
 public class BookService {
 
     private final BookMapper bookMapper;
+    private final BookTransactionHistoryRepository bookTransactionHistoryRepository;
     private final BookRepository bookRepository;
 
     public Integer save(BookRequest request, Authentication connectedUser) {
@@ -57,6 +60,24 @@ public class BookService {
         Page<Book> books = bookRepository.findAll(BookSpecification.withOwner(user.getId()), pageable);
         List<BookResponse> bookResponse = books.stream()
                 .map(bookMapper::toBookResponse)
+                .toList();
+        return new PageResponse<>(
+                bookResponse,
+                books.getNumber(),
+                books.getSize(),
+                books.getTotalElements(),
+                books.getTotalPages(),
+                books.isFirst(),
+                books.isLast()
+        );
+    }
+
+    public PageResponse<BorrowedBookResponse> findAllBorrowedBooks(int page, int size, Authentication connectedUser) {
+        User user = ((User) connectedUser.getPrincipal());
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdDate").descending());
+        Page<BookTransactionHistory> books = bookTransactionHistoryRepository.findAllBorrowedBooks(pageable, user.getId());
+        List<BorrowedBookResponse> bookResponse = books.stream()
+                .map(bookMapper::toBorrowedBookResponse)
                 .toList();
         return new PageResponse<>(
                 bookResponse,
